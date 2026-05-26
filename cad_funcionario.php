@@ -14,6 +14,32 @@ $cpf = trim($_POST['cpf']);
 
 $erro = false;
 
+	function validarCPF($cpf) {
+   $cpf = preg_replace('/[^0-9]/', '', $cpf);
+   if (strlen($cpf) != 11 || preg_match('/(\d)\1{10}/', $cpf)) {
+       return false;
+   }
+   for ($t = 9; $t < 11; $t++) {
+       for ($d = 0, $c = 0; $c < $t; $c++) {
+           $d += $cpf[$c] * (($t + 1) - $c);
+       }
+       $d = ((10 * $d) % 11) % 10;
+       if ($cpf[$c] != $d) {
+           return false;
+       }
+   }
+   return true;
+}
+// ========================
+// FUNÇÃO CRIPTOGRAFAR CPF
+// ========================
+function criptografarCPF($cpf){
+   $cpf = preg_replace('/[^0-9]/', '', $cpf);
+   $chave = "minha_chave_secreta_123";
+   $metodo = "AES-256-CBC";
+   $iv = substr(hash('sha256', $chave), 0, 16);
+   return openssl_encrypt($cpf, $metodo, $chave, 0, $iv);
+}
 /* VALIDAÇÃO DE SENHA */
 $senhaForte = preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/', $senha);
 

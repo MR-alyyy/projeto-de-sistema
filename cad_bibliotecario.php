@@ -1,46 +1,3 @@
-<?php
-include "conexao.php";
-
-
-
-$mensagem = "";
-
-if (isset($_POST['inserir'])) {
-
-$nome = trim($_POST['nome']);
-$senha = trim($_POST['senha']);
-
-$erro = false;
-
-/* VALIDAÇÃO DE SENHA */
-$senhaForte = preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/', $senha);
-
-if (!$senhaForte) {
-    $mensagem .= "<p class='erro'>A senha deve ter no mínimo 8 caracteres, com letra maiúscula, minúscula, número e símbolo.</p>";
-    $erro = true;
-}
-
-
-$senhaCriptografada = password_hash($senha, PASSWORD_DEFAULT);
-
-$stmt = $conexao->prepare("INSERT INTO cadastro (nome, senha) VALUES (?, ?)");
-
-$stmt->bind_param("ss", $email, $senhaCriptografada);
-
-if ($stmt->execute()) {
-    $mensagem = "<p class='sucesso'>Cadastro realizado com sucesso!</p>";
-} else {
-    $mensagem = "<p class='erro'>Erro ao cadastrar: ".$stmt->error."</p>";
-}
-
-$stmt->close();
-
-}
-
-}
-
-
-?>
 
 <!DOCTYPE html>
 <html>
@@ -59,13 +16,12 @@ $stmt->close();
 
 <h2>cadastro</h2>
 
-<?php echo $mensagem; ?>
 
-<label>E-mail, Celular ou CPF</label>
-<input name="email" type="text" autocomplete="off" required>
+<label>nome</label>
+<input name="nomeG" type="text" autocomplete="off">
 
 <label>Senha</label>
-<input name="senha" type="password" required>
+<input name="senha" type="password">
 
 <button type="submit" name="inserir">Cadastrar</button>
 
@@ -80,3 +36,50 @@ $stmt->close();
 
 </body>
 </html>
+
+<?php
+include "conexao.php";
+
+
+
+
+if (isset($_POST['inserir'])) {
+
+$nomeG = trim($_POST['nomeG']);
+$senha = trim($_POST['senha']);
+
+$erro = false;
+
+/* VALIDAÇÃO DE SENHA */
+$senhaForte = preg_match('/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/', $senha);
+
+if (!$senhaForte) {
+    $mensagem .= "<p class='erro'>A senha deve ter no mínimo 8 caracteres, com letra maiúscula, minúscula, número e símbolo.</p>";
+    $erro = true;
+}
+
+
+
+
+$senhaCriptografada = password_hash($senha, PASSWORD_DEFAULT);
+
+
+
+$stmt = $conexao->prepare("INSERT INTO gerente (nomeG, senha) VALUES (?, ?)");
+
+$stmt->bind_param("ss", $nomeG, $senhaForte);
+
+if ($stmt->execute()) {
+    $mensagem = "<p class='sucesso'>Cadastro realizado com sucesso!</p>";
+} else {
+    $mensagem = "<p class='erro'>Erro ao cadastrar: ".$stmt->error."</p>";
+}
+
+$stmt->close();
+
+}
+
+
+
+
+?>

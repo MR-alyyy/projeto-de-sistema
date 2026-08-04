@@ -2,6 +2,6 @@
 $host="localhost";
 $user="root";
 $pass="";
-$banco="bilioteca";
+$banco="biblioteca";
 $conexao=mysqli_connect($host,$user,$pass,$banco);
 ?>

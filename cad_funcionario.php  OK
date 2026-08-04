@@ -99,7 +99,7 @@ if (isset($_POST['inserir'])) {
         $senhaCriptografada = password_hash($senha, PASSWORD_DEFAULT);
 
         $stmt = $conexao->prepare("
-            INSERT INTO cadastro
+            INSERT INTO funcionario
             (nome, senha, telefone, cpf)
             VALUES (?, ?, ?, ?)
         ");

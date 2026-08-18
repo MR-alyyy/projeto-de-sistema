@@ -198,7 +198,7 @@ if (isset($_POST['inserir'])) {
             Cadastrar
         </button>
 
-        <a href="login.php">
+        <a href="login_leitor.php">
             <button type="button">
                 Já fez login?
             </button>

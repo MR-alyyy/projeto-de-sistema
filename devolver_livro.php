@@ -14,8 +14,7 @@ if (isset($_POST['devolver'])) {
     $stmt = $conexao->prepare("SELECT id_livro, data_prevista FROM emprestimos WHERE id = ? AND status = 'emprestado'");
     $stmt->bind_param("i", $id_emprestimo);
     $stmt->execute();
-    $resultado = $stmt->get_result();
-    $emprestimo = $resultado->fetch_assoc();
+    $emprestimo = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
     if (!$emprestimo) {
@@ -37,7 +36,8 @@ if (isset($_POST['devolver'])) {
         $dataDevolucao = date("Y-m-d H:i:s");
 
         // ========================
-        // ATUALIZAR EMPRÉSTIMO
+        // ATUALIZAR EMPRÉSTIMO (não mexe mais em livros.quantidade,
+        // pois ela agora representa o total fixo do título)
         // ========================
         $stmt = $conexao->prepare("
             UPDATE emprestimos
@@ -47,12 +47,6 @@ if (isset($_POST['devolver'])) {
         $stmt->bind_param("sdi", $dataDevolucao, $multa, $id_emprestimo);
 
         if ($stmt->execute()) {
-
-            // devolve 1 exemplar ao estoque
-            $stmtUpdate = $conexao->prepare("UPDATE livros SET quantidade = quantidade + 1 WHERE id = ?");
-            $stmtUpdate->bind_param("i", $emprestimo['id_livro']);
-            $stmtUpdate->execute();
-            $stmtUpdate->close();
 
             if ($multa > 0) {
                 $mensagem = "<p class='erro'>Devolução registrada com atraso. Multa: R$ " . number_format($multa, 2, ',', '.') . "</p>";
@@ -93,6 +87,8 @@ $emprestimos = $conexao->query("
 
     <h2>Devolver Livro</h2>
 
+    <p><a href="menu_fun.php">&larr; Voltar ao menu</a></p>
+
     <?php echo $mensagem; ?>
 
     <table border="1" cellpadding="8">
@@ -119,6 +115,7 @@ $emprestimos = $conexao->query("
         </tr>
         <?php endwhile; ?>
     </table>
+
 
 </div>
 

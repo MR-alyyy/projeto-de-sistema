@@ -25,6 +25,7 @@ if (isset($_POST['inserir'])) {
 ?>
 <!DOCTYPE html>
 <html>
+
 <head>
 <meta charset="UTF-8">
 <title>Cadastro livro</title>
@@ -36,8 +37,11 @@ if (isset($_POST['inserir'])) {
 
     <h2>Cadastro</h2>
 
+    <p><a href="menu_fun.php">&larr; Voltar ao menu</a></p>
+
     <?php echo $mensagem; ?>
 
+    
     <form method="post">
 
         <label>Título</label>
@@ -58,6 +62,7 @@ if (isset($_POST['inserir'])) {
         <button type="submit" name="inserir">Cadastrar</button>
 
     </form>
+
 
 </div>
 

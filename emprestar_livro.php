@@ -12,21 +12,30 @@ if (isset($_POST['inserir'])) {
     $erro = false;
 
     // ========================
-    // VERIFICAR SE HÁ EXEMPLAR DISPONÍVEL
+    // VERIFICAR DISPONIBILIDADE (total - emprestados no momento)
     // ========================
     $stmt = $conexao->prepare("SELECT quantidade FROM livros WHERE id = ?");
     $stmt->bind_param("i", $id_livro);
     $stmt->execute();
-    $resultado = $stmt->get_result();
-    $livro = $resultado->fetch_assoc();
+    $livro = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
     if (!$livro) {
         $mensagem .= "<p class='erro'>Livro não encontrado.</p>";
         $erro = true;
-    } elseif ($livro['quantidade'] <= 0) {
-        $mensagem .= "<p class='erro'>Não há exemplares disponíveis para empréstimo.</p>";
-        $erro = true;
+    } else {
+        $stmt = $conexao->prepare("SELECT COUNT(*) AS total FROM emprestimos WHERE id_livro = ? AND status = 'emprestado'");
+        $stmt->bind_param("i", $id_livro);
+        $stmt->execute();
+        $emprestados = $stmt->get_result()->fetch_assoc()['total'];
+        $stmt->close();
+
+        $disponivel = $livro['quantidade'] - $emprestados;
+
+        if ($disponivel <= 0) {
+            $mensagem .= "<p class='erro'>Não há exemplares disponíveis para empréstimo.</p>";
+            $erro = true;
+        }
     }
 
     // ========================
@@ -61,15 +70,7 @@ if (isset($_POST['inserir'])) {
         $stmt->bind_param("iiss", $id_livro, $id_leitor, $dataEmprestimo, $dataPrevista);
 
         if ($stmt->execute()) {
-
-            // baixa 1 exemplar do estoque
-            $stmtUpdate = $conexao->prepare("UPDATE livros SET quantidade = quantidade - 1 WHERE id = ?");
-            $stmtUpdate->bind_param("i", $id_livro);
-            $stmtUpdate->execute();
-            $stmtUpdate->close();
-
             $mensagem = "<p class='sucesso'>Empréstimo registrado com sucesso! Devolução prevista para " . date("d/m/Y", strtotime($dataPrevista)) . ".</p>";
-
         } else {
             $mensagem = "<p class='erro'>Erro ao registrar empréstimo: " . $stmt->error . "</p>";
         }
@@ -79,9 +80,18 @@ if (isset($_POST['inserir'])) {
 }
 
 // ========================
-// LISTAR LIVROS DISPONÍVEIS E LEITORES (para os selects)
+// LISTAR LIVROS COM AO MENOS 1 EXEMPLAR DISPONÍVEL E LEITORES
 // ========================
-$livros = $conexao->query("SELECT id, titulo FROM livros WHERE quantidade > 0 ORDER BY titulo");
+$livros = $conexao->query("
+    SELECT l.id, l.titulo,
+           l.quantidade - (
+               SELECT COUNT(*) FROM emprestimos e
+               WHERE e.id_livro = l.id AND e.status = 'emprestado'
+           ) AS disponivel
+    FROM livros l
+    HAVING disponivel > 0
+    ORDER BY l.titulo
+");
 $leitores = $conexao->query("SELECT id, nome FROM leitores ORDER BY nome");
 ?>
 <!DOCTYPE html>
@@ -91,11 +101,14 @@ $leitores = $conexao->query("SELECT id, nome FROM leitores ORDER BY nome");
 <title>Emprestar Livro</title>
 </head>
 
+
 <body>
 
 <div class="container">
 
     <h2>Emprestar Livro</h2>
+
+    <p><a href="menu_fun.php">&larr; Voltar ao menu</a></p>
 
     <?php echo $mensagem; ?>
 
@@ -105,7 +118,9 @@ $leitores = $conexao->query("SELECT id, nome FROM leitores ORDER BY nome");
         <select name="id_livro" required>
             <option value="">Selecione o livro</option>
             <?php while ($l = $livros->fetch_assoc()): ?>
-                <option value="<?php echo $l['id']; ?>"><?php echo htmlspecialchars($l['titulo']); ?></option>
+                <option value="<?php echo $l['id']; ?>">
+                    <?php echo htmlspecialchars($l['titulo']); ?> (<?php echo $l['disponivel']; ?> disponível(is))
+                </option>
             <?php endwhile; ?>
         </select>
 
@@ -120,6 +135,7 @@ $leitores = $conexao->query("SELECT id, nome FROM leitores ORDER BY nome");
         <button type="submit" name="inserir">Registrar Empréstimo</button>
 
     </form>
+
 
 </div>
 

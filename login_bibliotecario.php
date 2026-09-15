@@ -30,7 +30,7 @@ if (isset($_POST['entrar'])) {
                 $_SESSION['nome']  = $usuario['nome'];
 
                 $stmt->close();
-                header("Location: tela_principal.html");
+                header("Location: tela_bibliotecario.html");
                 exit();
 
             } else {

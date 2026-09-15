@@ -68,9 +68,9 @@ if (isset($_POST['inserir'])) {
         $cpf = criptografarCPF($cpf);
         $senhaCriptografada = password_hash($senha, PASSWORD_DEFAULT);
 
-        $stmt = $conexao->prepare("INSERT INTO leitores (nome, senha, telefone, cpf, endereco) VALUES (?, ?, ?, ?, ?)");
+        $stmt = $conexao->prepare("INSERT INTO leitor (nome, telefone, cpf, endereco, senha) VALUES (?, ?, ?, ?, ?)");
 
-        $stmt->bind_param("sssss", $nome, $senhaCriptografada, $telefone, $cpf, $endereco);
+        $stmt->bind_param("sssss", $nome, $telefone, $cpf, $endereco, $senhaCriptografada);
 
         if ($stmt->execute()) {
             $mensagem = "<p class='sucesso'>Cadastro realizado com sucesso!</p>";

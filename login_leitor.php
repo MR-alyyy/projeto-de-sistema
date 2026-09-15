@@ -15,7 +15,7 @@ if (isset($_POST['entrar'])) {
 
     } else {
 
-        $stmt = $conexao->prepare("SELECT nome, senha FROM leitores WHERE nome = ?");
+        $stmt = $conexao->prepare("SELECT nome, senha FROM leitor WHERE nome = ?");
         $stmt->bind_param("s", $nome);
         $stmt->execute();
         $resultado = $stmt->get_result();

@@ -10,7 +10,7 @@ if (isset($_POST['inserir'])) {
     $quantidade = (int) trim($_POST['quantidade']);
     $descricao = trim($_POST['descricao']);
 
-    $stmt = $conexao->prepare("INSERT INTO livros (titulo, autor, genero, quantidade, descricao) VALUES (?, ?, ?, ?, ?)");
+    $stmt = $conexao->prepare("INSERT INTO livro (titulo, autor, genero, quantidade, descricao) VALUES (?, ?, ?, ?, ?)");
     $stmt->bind_param("sssis", $titulo, $autor, $genero, $quantidade, $descricao);
 
     if ($stmt->execute()) {

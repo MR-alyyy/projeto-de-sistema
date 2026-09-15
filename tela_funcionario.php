@@ -11,7 +11,7 @@ require_once "conexao.php";
 // BUSCAR LEITORES
 // ==========================================
 
-$sql = "SELECT id, nome FROM leitores ORDER BY nome ASC";
+$sql = "SELECT  nome FROM leitor ORDER BY nome ASC";
 
 $resultado = mysqli_query($conexao, $sql);
 
@@ -24,7 +24,7 @@ if (!$resultado) {
 // CONTAR LEITORES
 // ==========================================
 
-$sqlTotal = "SELECT COUNT(*) AS total FROM leitores";
+$sqlTotal = "SELECT COUNT(*) AS total FROM leitor";
 
 $resultadoTotal = mysqli_query($conexao, $sqlTotal);
 

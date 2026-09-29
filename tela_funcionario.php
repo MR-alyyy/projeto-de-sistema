@@ -1,494 +1,1033 @@
 <?php
 
-// ==========================================
-// CONEXÃO COM O BANCO
-// ==========================================
+session_start();
 
 require_once "conexao.php";
 
 
-// ==========================================
-// BUSCAR LEITORES
-// ==========================================
+/* =========================================================
+   PROTEÇÃO DO LOGIN
+========================================================= */
 
-$sql = "SELECT  nome FROM leitor ORDER BY nome ASC";
+if (
+    !isset($_SESSION['tipo']) ||
+    $_SESSION['tipo'] !== 'funcionario'
+) {
 
-$resultado = mysqli_query($conexao, $sql);
+    header("Location: login_funcionario.php");
+    exit();
+
+}
+
+
+/* =========================================================
+   BUSCAR LIVROS
+========================================================= */
+
+$sql = "
+    SELECT
+        status,
+        titulo,
+        autor,
+        genero,
+        quantidade,
+        descricao
+    FROM livros
+    ORDER BY titulo ASC
+";
+
+
+$resultado = mysqli_query(
+    $conexao,
+    $sql
+);
+
 
 if (!$resultado) {
-    die("Erro ao buscar leitores: " . mysqli_error($conexao));
-}
 
-
-// ==========================================
-// CONTAR LEITORES
-// ==========================================
-
-$sqlTotal = "SELECT COUNT(*) AS total FROM leitor";
-
-$resultadoTotal = mysqli_query($conexao, $sqlTotal);
-
-$totalLeitores = 0;
-
-if ($resultadoTotal) {
-    $dadosTotal = mysqli_fetch_assoc($resultadoTotal);
-    $totalLeitores = $dadosTotal["total"];
-}
-
-
-// ==========================================
-// PESQUISA DE LEITORES
-// ==========================================
-
-$pesquisa = $_GET["pesquisa"] ?? "";
-
-if ($pesquisa != "") {
-
-    $pesquisaSegura = mysqli_real_escape_string(
-        $conexao,
-        $pesquisa
+    die(
+        "Erro ao buscar livros: "
+        . mysqli_error($conexao)
     );
 
-    $sql = "
-        SELECT id, nome
-        FROM leitores
-        WHERE nome LIKE '%$pesquisaSegura%'
-        ORDER BY nome ASC
-    ";
+}
 
-    $resultado = mysqli_query($conexao, $sql);
 
-    if (!$resultado) {
-        die("Erro na pesquisa: " . mysqli_error($conexao));
+/* =========================================================
+   TRANSFORMAR RESULTADO EM ARRAY
+========================================================= */
+
+$livros = [];
+
+while (
+    $livro = mysqli_fetch_assoc($resultado)
+) {
+
+    $livros[] = $livro;
+
+}
+
+
+/* =========================================================
+   CONTADORES
+========================================================= */
+
+$totalTitulos = count($livros);
+
+$totalExemplares = 0;
+
+$totalDisponiveis = 0;
+
+$totalIndisponiveis = 0;
+
+
+foreach ($livros as $livro) {
+
+    $quantidade =
+        (int)$livro['quantidade'];
+
+    $totalExemplares +=
+        $quantidade;
+
+
+    $status =
+        strtolower(
+            trim($livro['status'])
+        );
+
+
+    if (
+        $status === 'ativo' ||
+        $status === 'dispon' ||
+        $status === 'livre'
+    ) {
+
+        $totalDisponiveis +=
+            $quantidade;
+
+    } else {
+
+        $totalIndisponiveis +=
+            $quantidade;
+
     }
+
+}
+
+
+/* =========================================================
+   FUNCIONÁRIOS
+========================================================= */
+
+$funcionarios = [];
+
+
+$sqlFuncionarios = "
+    SELECT nome
+    FROM funcionario
+    ORDER BY nome ASC
+";
+
+
+$resultadoFuncionarios =
+    mysqli_query(
+        $conexao,
+        $sqlFuncionarios
+    );
+
+
+if ($resultadoFuncionarios) {
+
+    while (
+        $funcionario =
+        mysqli_fetch_assoc(
+            $resultadoFuncionarios
+        )
+    ) {
+
+        $funcionarios[] =
+            $funcionario;
+
+    }
+
 }
 
 ?>
 
 <!DOCTYPE html>
+
 <html lang="pt-BR">
 
 <head>
 
-    <meta charset="UTF-8">
+<meta charset="UTF-8">
 
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+<title>
+Fichário — Painel do Bibliotecário
+</title>
 
-    <title>Painel do Funcionário</title>
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
 
 
-    <style>
+<link
+    rel="preconnect"
+    href="https://fonts.googleapis.com"
+>
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
-        }
 
+<link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,0,0,500&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Sans+3:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+>
 
-        body {
-            background: #f1f5f9;
-            color: #1e293b;
-        }
 
+<style>
 
-        .layout {
-            display: flex;
-            min-height: 100vh;
-        }
+/* =========================================================
+   CORES
+========================================================= */
 
+:root {
 
-        /* ===============================
-           MENU
-        =============================== */
+    --paper:#efe7d6;
 
-        .sidebar {
-            width: 250px;
-            height: 100vh;
+    --paper-deep:#e6dcc4;
 
-            position: fixed;
-            left: 0;
-            top: 0;
+    --ink-green:#1f3b2c;
 
-            background: #172554;
-            color: white;
+    --ink-green-2:#16291d;
 
-            padding: 25px 18px;
-        }
+    --burgundy:#7a2331;
 
+    --burgundy-dark:#5e1a25;
 
-        .logo {
-            font-size: 21px;
-            font-weight: bold;
+    --brass:#a9843c;
 
-            margin-bottom: 40px;
-            padding-left: 10px;
-        }
+    --ink:#2b241b;
 
+    --ink-soft:#5c5240;
 
-        .logo span {
-            color: #60a5fa;
-        }
+    --rule:#c9bfa0;
 
+    --ok-green:#3c6b46;
 
-        .menu {
-            list-style: none;
-        }
+    --white-card:#faf7ee;
 
+}
 
-        .menu li {
-            margin-bottom: 8px;
-        }
 
+/* =========================================================
+   RESET
+========================================================= */
 
-        .menu a {
-            display: block;
+* {
 
-            padding: 13px 15px;
+    box-sizing:border-box;
 
-            color: #cbd5e1;
+}
 
-            text-decoration: none;
 
-            border-radius: 8px;
+html,
+body {
 
-            transition: .2s;
-        }
+    margin:0;
 
+    padding:0;
 
-        .menu a:hover,
-        .menu a.active {
-            background: #2563eb;
-            color: white;
-        }
+}
 
 
-        /* ===============================
-           CONTEÚDO
-        =============================== */
+body {
 
-        .main {
-            margin-left: 250px;
+    background:var(--paper);
 
-            width: calc(100% - 250px);
+    background-image:
 
-            padding: 35px 40px;
-        }
+        repeating-linear-gradient(
+            0deg,
+            rgba(0,0,0,0.015) 0px,
+            rgba(0,0,0,0.015) 1px,
+            transparent 1px,
+            transparent 3px
+        );
 
+    color:var(--ink);
 
-        .header {
-            display: flex;
+    font-family:'Source Sans 3',sans-serif;
 
-            justify-content: space-between;
+    min-height:100vh;
 
-            align-items: center;
+}
 
-            margin-bottom: 30px;
-        }
 
+/* =========================================================
+   APP
+========================================================= */
 
-        .header h1 {
-            font-size: 28px;
+.app {
 
-            margin-bottom: 7px;
-        }
+    display:flex;
 
+    min-height:100vh;
 
-        .header p {
-            color: #64748b;
-        }
+}
 
 
-        /* ===============================
-           CARDS
-        =============================== */
+/* =========================================================
+   SIDEBAR
+========================================================= */
 
-        .cards {
-            display: grid;
+.sidebar {
 
-            grid-template-columns:
-                repeat(3, 1fr);
+    width:240px;
 
-            gap: 20px;
+    flex-shrink:0;
 
-            margin-bottom: 30px;
-        }
+    background:
 
+        linear-gradient(
+            180deg,
+            var(--ink-green) 0%,
+            var(--ink-green-2) 100%
+        );
 
-        .card {
-            background: white;
+    color:#e9e2cd;
 
-            padding: 23px;
+    padding:28px 0 20px;
 
-            border-radius: 12px;
+    display:flex;
 
-            box-shadow:
-                0 4px 15px rgba(0,0,0,.05);
-        }
+    flex-direction:column;
 
+    position:sticky;
 
-        .card-icon {
-            font-size: 25px;
+    top:0;
 
-            margin-bottom: 10px;
-        }
+    height:100vh;
 
+}
 
-        .card p {
-            color: #64748b;
 
-            font-size: 14px;
-        }
+.brand {
 
+    padding:0 24px 22px;
 
-        .card h2 {
-            font-size: 28px;
+    border-bottom:
 
-            margin-top: 8px;
+        1px solid
+        rgba(233,226,205,0.15);
 
-            color: #1e3a8a;
-        }
+    margin-bottom:18px;
 
+}
 
-        /* ===============================
-           PAINEL
-        =============================== */
 
-        .panel {
-            background: white;
+.brand .mark {
 
-            border-radius: 12px;
+    font-family:'Fraunces',serif;
 
-            padding: 25px;
+    font-weight:600;
 
-            box-shadow:
-                0 4px 15px rgba(0,0,0,.05);
-        }
+    font-size:27px;
 
+    color:#f2ecda;
 
-        .panel-header {
-            display: flex;
+}
 
-            justify-content: space-between;
 
-            align-items: center;
+.brand .sub {
 
-            margin-bottom: 20px;
-        }
+    font-family:'IBM Plex Mono',monospace;
 
+    font-size:10.5px;
 
-        .panel-header h2 {
-            font-size: 20px;
-        }
+    letter-spacing:1.5px;
 
+    text-transform:uppercase;
 
-        /* ===============================
-           PESQUISA
-        =============================== */
+    color:#a9b8a3;
 
-        .pesquisa {
-            display: flex;
+    margin-top:6px;
 
-            gap: 10px;
+}
 
-            margin-bottom: 20px;
-        }
 
+nav {
 
-        .pesquisa input {
-            flex: 1;
+    padding:0 12px;
 
-            padding: 13px 15px;
+    display:flex;
 
-            border: 1px solid #cbd5e1;
+    flex-direction:column;
 
-            border-radius: 8px;
+    gap:3px;
 
-            outline: none;
+}
 
-            font-size: 14px;
-        }
 
+.nav-btn {
 
-        .pesquisa input:focus {
-            border-color: #2563eb;
-        }
+    display:flex;
 
+    align-items:center;
 
-        .pesquisa button {
-            border: none;
+    gap:12px;
 
-            background: #2563eb;
+    background:none;
 
-            color: white;
+    border:none;
 
-            padding: 0 22px;
+    color:#cfd6bf;
 
-            border-radius: 8px;
+    font-family:'Source Sans 3',sans-serif;
 
-            cursor: pointer;
+    font-size:15px;
 
-            font-weight: bold;
-        }
+    font-weight:500;
 
+    text-align:left;
 
-        .pesquisa button:hover {
-            background: #1d4ed8;
-        }
+    padding:11px 12px;
 
+    border-radius:3px;
 
-        /* ===============================
-           TABELA
-        =============================== */
+    cursor:pointer;
 
-        .table-container {
-            overflow-x: auto;
-        }
+    text-decoration:none;
 
+}
 
-        table {
-            width: 100%;
 
-            border-collapse: collapse;
-        }
+.nav-btn:hover {
 
+    background:
+        rgba(233,226,205,0.08);
 
-        th {
-            background: #f8fafc;
+    color:#f2ecda;
 
-            color: #64748b;
+}
 
-            text-align: left;
 
-            padding: 14px;
+.nav-btn.active {
 
-            font-size: 13px;
-        }
+    background:
+        rgba(233,226,205,0.1);
 
+    color:#f7f1de;
 
-        td {
-            padding: 15px 14px;
+}
 
-            border-bottom:
-                1px solid #e2e8f0;
 
-            font-size: 14px;
-        }
+.sidebar-foot {
 
+    margin-top:auto;
 
-        tr:hover td {
-            background: #f8fafc;
-        }
+    padding:16px 24px 0;
 
+    border-top:
+        1px solid
+        rgba(233,226,205,0.15);
 
-        .id {
-            color: #64748b;
-        }
+    font-family:'IBM Plex Mono',monospace;
 
+    font-size:10.5px;
 
-        /* ===============================
-           BOTÃO
-        =============================== */
+    color:#8b9a85;
 
-        .btn {
-            display: inline-block;
+}
 
-            padding: 7px 12px;
 
-            background: #eff6ff;
+/* =========================================================
+   MAIN
+========================================================= */
 
-            color: #2563eb;
+main {
 
-            border-radius: 6px;
+    flex:1;
 
-            text-decoration: none;
+    padding:40px 48px 60px;
 
-            font-size: 13px;
+    max-width:1200px;
 
-            font-weight: bold;
-        }
+}
 
 
-        .btn:hover {
-            background: #dbeafe;
-        }
+.page-head {
 
+    display:flex;
 
-        .nenhum {
-            text-align: center;
+    justify-content:space-between;
 
-            color: #64748b;
+    align-items:flex-end;
 
-            padding: 25px;
-        }
+    margin-bottom:30px;
 
+}
 
-        /* ===============================
-           RESPONSIVO
-        =============================== */
 
-        @media (max-width: 900px) {
+.eyebrow {
 
-            .cards {
-                grid-template-columns: 1fr;
-            }
+    font-family:'IBM Plex Mono',monospace;
 
-        }
+    font-size:11px;
 
+    letter-spacing:2px;
 
-        @media (max-width: 700px) {
+    text-transform:uppercase;
 
-            .sidebar {
-                width: 70px;
+    color:var(--brass);
 
-                padding: 20px 10px;
-            }
+    margin-bottom:8px;
 
+}
 
-            .logo {
-                font-size: 0;
 
-                text-align: center;
-            }
+.page-head h1 {
 
+    font-family:'Fraunces',serif;
 
-            .logo span {
-                font-size: 22px;
-            }
+    font-weight:600;
 
+    font-size:32px;
 
-            .menu a {
-                font-size: 0;
+    margin:0 0 6px;
 
-                text-align: center;
-            }
+    color:var(--ink-green);
 
+}
 
-            .main {
-                margin-left: 70px;
 
-                width: calc(100% - 70px);
+.page-head p {
 
-                padding: 20px;
-            }
+    margin:0;
 
+    color:var(--ink-soft);
 
-            .pesquisa {
-                flex-direction: column;
-            }
+    font-size:14.5px;
 
+}
 
-            .pesquisa button {
-                height: 45px;
-            }
 
-        }
+/* =========================================================
+   CARDS
+========================================================= */
 
-    </style>
+.stats {
+
+    display:grid;
+
+    grid-template-columns:
+        repeat(4,1fr);
+
+    gap:16px;
+
+    margin-bottom:32px;
+
+}
+
+
+.stat-card {
+
+    background:var(--white-card);
+
+    border:1px solid var(--rule);
+
+    border-radius:4px;
+
+    padding:16px 18px;
+
+    position:relative;
+
+}
+
+
+.stat-card::after {
+
+    content:"";
+
+    position:absolute;
+
+    top:0;
+
+    left:0;
+
+    bottom:0;
+
+    width:3px;
+
+    background:var(--stat-color);
+
+}
+
+
+.stat-card .num {
+
+    font-family:'IBM Plex Mono',monospace;
+
+    font-size:30px;
+
+    font-weight:600;
+
+    color:var(--ink-green);
+
+}
+
+
+.stat-card .lbl {
+
+    margin-top:8px;
+
+    font-size:12.5px;
+
+    color:var(--ink-soft);
+
+    text-transform:uppercase;
+
+    letter-spacing:.6px;
+
+}
+
+
+/* =========================================================
+   CARD
+========================================================= */
+
+.card {
+
+    background:var(--white-card);
+
+    border:1px solid var(--rule);
+
+    border-radius:4px;
+
+}
+
+
+/* =========================================================
+   TABELA
+========================================================= */
+
+.table-wrap {
+
+    overflow-x:auto;
+
+}
+
+
+table {
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    min-width:850px;
+
+}
+
+
+thead th {
+
+    text-align:left;
+
+    font-family:'IBM Plex Mono',monospace;
+
+    font-size:11px;
+
+    letter-spacing:1px;
+
+    text-transform:uppercase;
+
+    color:var(--ink-green);
+
+    padding:14px 16px;
+
+    border-bottom:2px solid var(--ink-green);
+
+    background:#e9e1cb;
+
+}
+
+
+tbody td {
+
+    padding:14px 16px;
+
+    border-bottom:1px solid var(--rule);
+
+    font-size:14.5px;
+
+    vertical-align:middle;
+
+}
+
+
+tbody tr:hover {
+
+    background:
+        rgba(122,35,49,0.04);
+
+}
+
+
+.book-title {
+
+    font-weight:600;
+
+    color:var(--ink);
+
+}
+
+
+.book-author {
+
+    display:block;
+
+    font-size:12.5px;
+
+    color:var(--ink-soft);
+
+    margin-top:2px;
+
+}
+
+
+.description {
+
+    max-width:260px;
+
+    color:var(--ink-soft);
+
+    font-size:13px;
+
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+.stamp {
+
+    display:inline-flex;
+
+    align-items:center;
+
+    padding:4px 10px;
+
+    border-radius:999px;
+
+    border:1.5px solid currentColor;
+
+    font-family:'IBM Plex Mono',monospace;
+
+    font-size:10px;
+
+    text-transform:uppercase;
+
+}
+
+
+.stamp.available {
+
+    color:var(--ok-green);
+
+}
+
+
+.stamp.unavailable {
+
+    color:var(--burgundy);
+
+}
+
+
+.stamp.other {
+
+    color:var(--brass);
+
+}
+
+
+/* =========================================================
+   FORM
+========================================================= */
+
+.form-card {
+
+    padding:28px 32px;
+
+    max-width:700px;
+
+}
+
+
+.form-grid {
+
+    display:grid;
+
+    grid-template-columns:1fr 1fr;
+
+    gap:18px 20px;
+
+    margin-bottom:20px;
+
+}
+
+
+.field {
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:6px;
+
+}
+
+
+.field.full {
+
+    grid-column:1 / -1;
+
+}
+
+
+.field label {
+
+    font-family:'IBM Plex Mono',monospace;
+
+    font-size:11px;
+
+    letter-spacing:1px;
+
+    text-transform:uppercase;
+
+    color:var(--ink-soft);
+
+}
+
+
+.field input,
+.field select,
+.field textarea {
+
+    font-family:'Source Sans 3',sans-serif;
+
+    font-size:15px;
+
+    padding:10px 12px;
+
+    border:1px solid var(--rule);
+
+    border-radius:3px;
+
+    background:#fff;
+
+    color:var(--ink);
+
+}
+
+
+.field textarea {
+
+    min-height:120px;
+
+    resize:vertical;
+
+}
+
+
+.btn-primary {
+
+    font-family:'Source Sans 3',sans-serif;
+
+    font-weight:700;
+
+    font-size:15px;
+
+    padding:11px 22px;
+
+    border-radius:3px;
+
+    border:none;
+
+    background:var(--burgundy);
+
+    color:#f7f1de;
+
+    cursor:pointer;
+
+}
+
+
+.btn-primary:hover {
+
+    background:var(--burgundy-dark);
+
+}
+
+
+/* =========================================================
+   FUNCIONÁRIOS
+========================================================= */
+
+.staff-list {
+
+    padding:8px 0;
+
+}
+
+
+.staff-row {
+
+    display:flex;
+
+    align-items:center;
+
+    gap:16px;
+
+    padding:16px 24px;
+
+    border-bottom:1px solid var(--rule);
+
+}
+
+
+.avatar {
+
+    width:42px;
+
+    height:42px;
+
+    border-radius:50%;
+
+    background:var(--ink-green);
+
+    color:#f2ecda;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    font-family:'Fraunces',serif;
+
+    font-weight:600;
+
+}
+
+
+.staff-info {
+
+    flex:1;
+
+}
+
+
+.staff-info .name {
+
+    font-weight:600;
+
+}
+
+
+.staff-info .role {
+
+    font-size:13px;
+
+    color:var(--ink-soft);
+
+}
+
+
+/* =========================================================
+   RESPONSIVO
+========================================================= */
+
+@media(max-width:900px) {
+
+    .app {
+
+        flex-direction:column;
+
+    }
+
+
+    .sidebar {
+
+        width:100%;
+
+        height:auto;
+
+        position:relative;
+
+        padding:16px;
+
+    }
+
+
+    nav {
+
+        flex-direction:row;
+
+        overflow-x:auto;
+
+    }
+
+
+    .sidebar-foot {
+
+        display:none;
+
+    }
+
+
+    main {
+
+        padding:24px 20px;
+
+    }
+
+
+    .stats {
+
+        grid-template-columns:
+            repeat(2,1fr);
+
+    }
+
+}
+
+
+@media(max-width:600px) {
+
+    .stats {
+
+        grid-template-columns:1fr;
+
+    }
+
+
+    .form-grid {
+
+        grid-template-columns:1fr;
+
+    }
+
+
+    .field.full {
+
+        grid-column:auto;
+
+    }
+
+}
+
+</style>
 
 </head>
 
@@ -496,227 +1035,918 @@ if ($pesquisa != "") {
 <body>
 
 
-<div class="layout">
+<div class="app">
 
 
-    <!-- ======================================
-         MENU LATERAL
-    ======================================= -->
+<!-- =====================================================
+   MENU LATERAL
+===================================================== -->
 
-    <aside class="sidebar">
+<aside class="sidebar">
 
-        <div class="logo">
 
-            📚 <span>Biblioteca</span>
+    <div class="brand">
+
+        <div class="mark">
+            Fichário
+        </div>
+
+        <div class="sub">
+            Painel do bibliotecário
+        </div>
+
+    </div>
+
+
+    <nav>
+
+
+        <button
+            class="nav-btn active"
+            onclick="mostrarTela('acervo', this)"
+        >
+            📚 Acervo
+        </button>
+
+
+        <button
+            class="nav-btn"
+            onclick="mostrarTela('cadastro-livro', this)"
+        >
+            📖 Cadastrar livro
+        </button>
+
+
+        <button
+            class="nav-btn"
+            onclick="mostrarTela('cadastro-funcionario', this)"
+        >
+            👤 Cadastrar funcionário
+        </button>
+
+
+        <button
+            class="nav-btn"
+            onclick="mostrarTela('funcionarios', this)"
+        >
+            👥 Funcionários
+        </button>
+
+
+        <a
+            href="logout.php"
+            class="nav-btn"
+        >
+            🚪 Sair
+        </a>
+
+
+    </nav>
+
+
+    <div class="sidebar-foot">
+
+        Usuário:
+
+        <?= htmlspecialchars(
+            $_SESSION['nome'] ?? 'Funcionário'
+        ) ?>
+
+        <br><br>
+
+        Sistema da Biblioteca
+
+    </div>
+
+
+</aside>
+
+
+<!-- =====================================================
+   CONTEÚDO
+===================================================== -->
+
+<main>
+
+
+<!-- =====================================================
+   ACERVO
+===================================================== -->
+
+<section id="acervo">
+
+
+    <div class="page-head">
+
+        <div>
+
+            <div class="eyebrow">
+                Catálogo geral
+            </div>
+
+            <h1>
+                Acervo da biblioteca
+            </h1>
+
+            <p>
+                Consulte os livros cadastrados na biblioteca.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <!-- ESTATÍSTICAS -->
+
+    <div class="stats">
+
+
+        <div
+            class="stat-card"
+            style="--stat-color:var(--ink-green)"
+        >
+
+            <div class="num">
+
+                <?= $totalTitulos ?>
+
+            </div>
+
+            <div class="lbl">
+
+                Títulos cadastrados
+
+            </div>
 
         </div>
 
 
-        <ul class="menu">
+        <div
+            class="stat-card"
+            style="--stat-color:var(--brass)"
+        >
 
-            <li>
-                <a href="#" class="active">
-                    📊 Dashboard
-                </a>
-            </li>
+            <div class="num">
 
-            <li>
-                <a href="#">
-                    📚 Livros
-                </a>
-            </li>
-
-            <li>
-                <a href="#">
-                    👥 Leitores
-                </a>
-            </li>
-
-            <li>
-                <a href="#">
-                    📤 Empréstimos
-                </a>
-            </li>
-
-            <li>
-                <a href="#">
-                    📥 Devoluções
-                </a>
-            </li>
-
-            <li>
-                <a href="#">
-                    📋 Relatórios
-                </a>
-            </li>
-
-            <li>
-                <a href="#">
-                    ⚙️ Configurações
-                </a>
-            </li>
-
-        </ul>
-
-    </aside>
-
-
-
-    <!-- ======================================
-         CONTEÚDO
-    ======================================= -->
-
-    <main class="main">
-
-
-        <header class="header">
-
-            <div>
-
-                <h1>
-                    Painel do Funcionário
-                </h1>
-
-                <p>
-                    Gerencie os leitores e o acervo da biblioteca.
-                </p>
+                <?= $totalExemplares ?>
 
             </div>
 
-        </header>
+            <div class="lbl">
 
-
-
-        <!-- ======================================
-             CARDS
-        ======================================= -->
-
-        <section class="cards">
-
-
-            <div class="card">
-
-                <div class="card-icon">
-                    👥
-                </div>
-
-                <p>
-                    Leitores cadastrados
-                </p>
-
-                <h2>
-                    <?= $totalLeitores ?>
-                </h2>
+                Exemplares
 
             </div>
 
+        </div>
 
-            <div class="card">
 
-                <div class="card-icon">
-                    📚
-                </div>
+        <div
+            class="stat-card"
+            style="--stat-color:var(--ok-green)"
+        >
 
-                <p>
-                    Livros cadastrados
-                </p>
+            <div class="num">
 
-                <h2>
-                    0
-                </h2>
+                <?= $totalDisponiveis ?>
 
             </div>
-            <div class="card">
-                <div class="card-icon">
-                    📤
-                </div>
-                <p>
-                    Empréstimos ativos
-                </p>
-                <h2>
-                    0
-                </h2>
+
+            <div class="lbl">
+
+                Disponíveis
+
             </div>
-        </section>
-        <!-- ======================================
-             LEITORES
-        ======================================= -->
-        <section class="panel">
-            <div class="panel-header">
-                <h2>
-                    👥 Leitores cadastrados
-                </h2>
+
+        </div>
+
+
+        <div
+            class="stat-card"
+            style="--stat-color:var(--burgundy)"
+        >
+
+            <div class="num">
+
+                <?= $totalIndisponiveis ?>
+
             </div>
-            <!-- PESQUISA -->
-            <form
-                method="GET"
-                class="pesquisa"
-            >
-                <input
-                    type="text"
-                    name="pesquisa"
-                    value="<?= htmlspecialchars($pesquisa) ?>"
-                    placeholder="Digite o nome do leitor..."
-                >
-                <button type="submit">
-                    Pesquisar
-                </button>
-            </form>
-            <!-- TABELA -->
-            <div class="table-container">
-                <table>
-                    <thead>
+
+            <div class="lbl">
+
+                Indisponíveis
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+
+    <!-- TABELA -->
+
+    <div class="card">
+
+
+        <div class="table-wrap">
+
+
+            <table>
+
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Título
+                        </th>
+
+                        <th>
+                            Autor
+                        </th>
+
+                        <th>
+                            Gênero
+                        </th>
+
+                        <th>
+                            Quantidade
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
+                        <th>
+                            Descrição
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+
+                <?php if (empty($livros)): ?>
+
+
+                    <tr>
+
+                        <td
+                            colspan="6"
+                            style="
+                                text-align:center;
+                                padding:50px;
+                            "
+                        >
+
+                            📚 Nenhum livro cadastrado.
+
+                        </td>
+
+                    </tr>
+
+
+                <?php else: ?>
+
+
+                    <?php foreach ($livros as $livro): ?>
+
+
+                        <?php
+
+                        $status =
+                            strtolower(
+                                trim(
+                                    $livro['status']
+                                )
+                            );
+
+
+                        if (
+                            $status === 'ativo' ||
+                            $status === 'livre' ||
+                            $status === 'dispon'
+                        ) {
+
+                            $classeStatus =
+                                'available';
+
+                        } elseif (
+                            $status === 'inativo' ||
+                            $status === 'indis'
+                        ) {
+
+                            $classeStatus =
+                                'unavailable';
+
+                        } else {
+
+                            $classeStatus =
+                                'other';
+
+                        }
+
+                        ?>
+
+
                         <tr>
-                            <th>
-                                ID
-                            </th>
-                            <th>
-                                Nome do leitor
-                            </th>
-                            <th>
-                                Ação
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                    <?php if (mysqli_num_rows($resultado) > 0): ?>
-                        <?php while (
-                            $leitor = mysqli_fetch_assoc($resultado)
-                        ): ?>
-                            <tr>
-                                <td class="id">
-                                    #<?= $leitor["id"] ?>
-                                </td>
-                                <td>
+
+
+                            <td>
+
+                                <span class="book-title">
+
                                     <?= htmlspecialchars(
-                                        $leitor["nome"]
+                                        $livro['titulo']
                                     ) ?>
-                                </td>
-                                <td>
-                                    <a
-                                        href="leitor.php?id=<?= $leitor["id"] ?>"
-                                        class="btn"
-                                    >
-                                        Ver cadastro
-                                    </a>
-                                </td>
-                            </tr>
-                        <?php endwhile; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td
-                                colspan="3"
-                                class="nenhum"
-                            >
-                                Nenhum leitor encontrado.
+
+                                </span>
+
                             </td>
+
+
+                            <td>
+
+                                <?= htmlspecialchars(
+                                    $livro['autor']
+                                ) ?>
+
+                            </td>
+
+
+                            <td>
+
+                                <?= htmlspecialchars(
+                                    $livro['genero']
+                                ) ?>
+
+                            </td>
+
+
+                            <td>
+
+                                <?= htmlspecialchars(
+                                    $livro['quantidade']
+                                ) ?>
+
+                            </td>
+
+
+                            <td>
+
+                                <span
+                                    class="stamp
+                                    <?= $classeStatus ?>"
+                                >
+
+                                    <?= htmlspecialchars(
+                                        $livro['status']
+                                    ) ?>
+
+                                </span>
+
+                            </td>
+
+
+                            <td>
+
+                                <div class="description">
+
+                                    <?= htmlspecialchars(
+                                        $livro['descricao']
+                                    ) ?>
+
+                                </div>
+
+                            </td>
+
+
                         </tr>
-                    <?php endif; ?>
-                    </tbody>
-                </table>
+
+
+                    <?php endforeach; ?>
+
+
+                <?php endif; ?>
+
+
+                </tbody>
+
+
+            </table>
+
+
+        </div>
+
+
+    </div>
+
+
+</section>
+
+
+<!-- =====================================================
+   CADASTRAR LIVRO
+===================================================== -->
+
+<section
+    id="cadastro-livro"
+    style="display:none;"
+>
+
+
+    <div class="page-head">
+
+        <div>
+
+            <div class="eyebrow">
+                Novo título
             </div>
-        </section>
-    </main>
+
+            <h1>
+                Cadastrar livro
+            </h1>
+
+            <p>
+                Adicione um novo livro ao acervo.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <div class="card form-card">
+
+
+        <form
+            method="post"
+            action="cadastrar_livro.php"
+        >
+
+
+            <div class="form-grid">
+
+
+                <div class="field full">
+
+                    <label>
+                        Título
+                    </label>
+
+                    <input
+                        type="text"
+                        name="titulo"
+                        maxlength="30"
+                        placeholder="Ex.: Dom Casmurro"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="field">
+
+                    <label>
+                        Autor
+                    </label>
+
+                    <input
+                        type="text"
+                        name="autor"
+                        maxlength="30"
+                        placeholder="Nome do autor"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="field">
+
+                    <label>
+                        Gênero
+                    </label>
+
+                    <input
+                        type="text"
+                        name="genero"
+                        maxlength="15"
+                        placeholder="Ex.: Romance"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="field">
+
+                    <label>
+                        Quantidade
+                    </label>
+
+                    <input
+                        type="number"
+                        name="quantidade"
+                        min="1"
+                        value="1"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="field">
+
+                    <label>
+                        Status
+                    </label>
+
+                    <select
+                        name="status"
+                        required
+                    >
+
+                        <option value="ativo">
+                            Ativo
+                        </option>
+
+                        <option value="inati">
+                            Inativo
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="field full">
+
+                    <label>
+                        Descrição
+                    </label>
+
+                    <textarea
+                        name="descricao"
+                        maxlength="350"
+                        placeholder="Descrição do livro"
+                    ></textarea>
+
+                </div>
+
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="btn-primary"
+            >
+
+                Cadastrar livro
+
+            </button>
+
+
+        </form>
+
+
+    </div>
+
+
+</section>
+
+
+<!-- =====================================================
+   CADASTRAR FUNCIONÁRIO
+===================================================== -->
+
+<section
+    id="cadastro-funcionario"
+    style="display:none;"
+>
+
+
+    <div class="page-head">
+
+        <div>
+
+            <div class="eyebrow">
+                Novo colaborador
+            </div>
+
+            <h1>
+                Cadastrar funcionário
+            </h1>
+
+            <p>
+                Registre um novo funcionário.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <div class="card form-card">
+
+
+        <form
+            method="post"
+            action="cad_funcionario.php"
+        >
+
+
+            <div class="form-grid">
+
+
+                <div class="field full">
+
+                    <label>
+                        Nome completo
+                    </label>
+
+                    <input
+                        type="text"
+                        name="nome"
+                        placeholder="Nome completo"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="field full">
+
+                    <label>
+                        Senha
+                    </label>
+
+                    <input
+                        type="password"
+                        name="senha"
+                        placeholder="Senha"
+                        required
+                    >
+
+                </div>
+
+
+            </div>
+
+
+            <button
+                type="submit"
+                class="btn-primary"
+            >
+
+                Cadastrar funcionário
+
+            </button>
+
+
+        </form>
+
+
+    </div>
+
+
+</section>
+
+
+<!-- =====================================================
+   FUNCIONÁRIOS
+===================================================== -->
+
+<section
+    id="funcionarios"
+    style="display:none;"
+>
+
+
+    <div class="page-head">
+
+        <div>
+
+            <div class="eyebrow">
+                Equipe
+            </div>
+
+            <h1>
+                Funcionários cadastrados
+            </h1>
+
+            <p>
+                Funcionários registrados no sistema.
+            </p>
+
+        </div>
+
+    </div>
+
+
+    <div class="card">
+
+
+        <div class="staff-list">
+
+
+        <?php if (empty($funcionarios)): ?>
+
+
+            <div
+                style="
+                    padding:50px;
+                    text-align:center;
+                    color:var(--ink-soft);
+                "
+            >
+
+                👤 Nenhum funcionário cadastrado.
+
+            </div>
+
+
+        <?php else: ?>
+
+
+            <?php foreach (
+                $funcionarios
+                as $funcionario
+            ): ?>
+
+
+                <?php
+
+                $nome =
+                    $funcionario['nome'];
+
+                $partes =
+                    preg_split(
+                        '/\s+/',
+                        trim($nome)
+                    );
+
+                $iniciais = '';
+
+                foreach (
+                    array_slice(
+                        $partes,
+                        0,
+                        2
+                    )
+                    as $parte
+                ) {
+
+                    $iniciais .=
+                        strtoupper(
+                            substr(
+                                $parte,
+                                0,
+                                1
+                            )
+                        );
+
+                }
+
+                ?>
+
+
+                <div class="staff-row">
+
+
+                    <div class="avatar">
+
+                        <?= htmlspecialchars(
+                            $iniciais
+                        ) ?>
+
+                    </div>
+
+
+                    <div class="staff-info">
+
+                        <div class="name">
+
+                            <?= htmlspecialchars(
+                                $nome
+                            ) ?>
+
+                        </div>
+
+
+                        <div class="role">
+
+                            Funcionário da biblioteca
+
+                        </div>
+
+                    </div>
+
+
+                </div>
+
+
+            <?php endforeach; ?>
+
+
+        <?php endif; ?>
+
+
+        </div>
+
+
+    </div>
+
+
+</section>
+
+
+</main>
+
+
 </div>
+
+
+<script>
+
+function mostrarTela(
+    nome,
+    botao
+) {
+
+
+    const telas = [
+
+        'acervo',
+
+        'cadastro-livro',
+
+        'cadastro-funcionario',
+
+        'funcionarios'
+
+    ];
+
+
+    telas.forEach(
+        function(tela) {
+
+
+            const elemento =
+                document.getElementById(
+                    tela
+                );
+
+
+            if (elemento) {
+
+                elemento.style.display =
+                    tela === nome
+                    ? ''
+                    : 'none';
+
+            }
+
+
+        }
+    );
+
+
+    document
+        .querySelectorAll(
+            '.nav-btn'
+        )
+        .forEach(
+            function(item) {
+
+                item.classList.remove(
+                    'active'
+                );
+
+            }
+        );
+
+
+    if (botao) {
+
+        botao.classList.add(
+            'active'
+        );
+
+    }
+
+}
+
+</script>
+
+
 </body>
+
 </html>

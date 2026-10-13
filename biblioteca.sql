@@ -1,97 +1,103 @@
--- phpMyAdmin SQL Dump
--- version 5.2.1
--- https://www.phpmyadmin.net/
---
--- Host: 127.0.0.1
--- Tempo de geração: 22/09/2026 às 15:03
--- Versão do servidor: 10.4.32-MariaDB
--- Versão do PHP: 8.2.12
+-- ============================================================
+-- biblioteca.sql  (banco completo, já com todos os ajustes)
+-- Importe no phpMyAdmin (aba "Importar" ou "SQL").
+-- ATENÇÃO: este script apaga e recria as tabelas. Se você já
+-- tem dados que quer manter, use o alter_tabelas.sql no lugar.
+-- ============================================================
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
-START TRANSACTION;
 SET time_zone = "+00:00";
+SET NAMES utf8mb4;
 
+CREATE DATABASE IF NOT EXISTS `biblioteca`
+  DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `biblioteca`;
 
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8mb4 */;
-
---
--- Banco de dados: `biblioteca`
---
+SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS `emprestimos`;
+DROP TABLE IF EXISTS `prateleira`;
+DROP TABLE IF EXISTS `livros`;
+DROP TABLE IF EXISTS `leitores`;
+DROP TABLE IF EXISTS `funcionario`;
+DROP TABLE IF EXISTS `bibliotecario`;
+SET FOREIGN_KEY_CHECKS = 1;
 
 -- --------------------------------------------------------
-
---
--- Estrutura para tabela `bibliotecario`
---
-
+-- bibliotecario
+-- --------------------------------------------------------
 CREATE TABLE `bibliotecario` (
-  `nome` varchar(30) NOT NULL,
-  `senha` varchar(100) NOT NULL
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `nome` VARCHAR(30) NOT NULL,
+  `senha` VARCHAR(100) NOT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Despejando dados para a tabela `bibliotecario`
---
 
 INSERT INTO `bibliotecario` (`nome`, `senha`) VALUES
 ('alysson', '$2y$10$cCfzNLLy5EcT/4wlzkPETOvfnNtsaYGIG48hv.1FN8Pca7nFMK5/2');
 
 -- --------------------------------------------------------
-
---
--- Estrutura para tabela `funcionario`
---
-
+-- funcionario
+-- --------------------------------------------------------
 CREATE TABLE `funcionario` (
-  `nome` varchar(30) NOT NULL,
-  `senha` varchar(100) NOT NULL,
-  `telefone` varchar(15) NOT NULL,
-  `cpf` varchar(15) NOT NULL
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `nome` VARCHAR(30) NOT NULL,
+  `senha` VARCHAR(100) NOT NULL,
+  `telefone` VARCHAR(15) NOT NULL,
+  `cpf` VARCHAR(100) NOT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
-
---
--- Estrutura para tabela `leitores`
---
-
+-- leitores
+-- --------------------------------------------------------
 CREATE TABLE `leitores` (
-  `nome` varchar(30) NOT NULL,
-  `senha` varchar(100) NOT NULL,
-  `telefone` varchar(15) NOT NULL,
-  `cpf` varchar(15) NOT NULL,
-  `endereco` varchar(60) NOT NULL
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `nome` VARCHAR(30) NOT NULL,
+  `senha` VARCHAR(100) NOT NULL,
+  `telefone` VARCHAR(15) NOT NULL,
+  `cpf` VARCHAR(100) NOT NULL,
+  `endereco` VARCHAR(60) NOT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
-
---
--- Estrutura para tabela `livros`
---
-
+-- livros
+-- --------------------------------------------------------
 CREATE TABLE `livros` (
-  `status` varchar(5) NOT NULL,
-  `titulo` varchar(30) NOT NULL,
-  `autor` varchar(30) NOT NULL,
-  `genero` varchar(15) NOT NULL,
-  `quantidade` varchar(100) NOT NULL,
-  `descricao` varchar(350) NOT NULL
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `status` VARCHAR(5) NOT NULL DEFAULT 'ativo',
+  `titulo` VARCHAR(30) NOT NULL,
+  `autor` VARCHAR(30) NOT NULL,
+  `genero` VARCHAR(15) NOT NULL,
+  `quantidade` INT NOT NULL DEFAULT 1,
+  `descricao` VARCHAR(350) NOT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
-
---
--- Estrutura para tabela `prateleira`
---
-
+-- prateleira
+-- --------------------------------------------------------
 CREATE TABLE `prateleira` (
-  `nome` varchar(30) NOT NULL
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `nome` VARCHAR(30) NOT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-COMMIT;
 
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+-- --------------------------------------------------------
+-- emprestimos (status: 'emprestado' ou 'devolvido')
+-- --------------------------------------------------------
+CREATE TABLE `emprestimos` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `id_livro` INT NOT NULL,
+  `id_leitor` INT NOT NULL,
+  `data_emprestimo` DATE NOT NULL,
+  `data_prevista` DATE NOT NULL,
+  `data_devolucao` DATE DEFAULT NULL,
+  `multa` DECIMAL(6,2) NOT NULL DEFAULT 0.00,
+  `status` VARCHAR(15) NOT NULL DEFAULT 'emprestado',
+  PRIMARY KEY (`id`),
+  KEY `id_livro` (`id_livro`),
+  KEY `id_leitor` (`id_leitor`),
+  CONSTRAINT `fk_emprestimo_livro` FOREIGN KEY (`id_livro`) REFERENCES `livros` (`id`),
+  CONSTRAINT `fk_emprestimo_leitor` FOREIGN KEY (`id_leitor`) REFERENCES `leitores` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

@@ -1,0 +1,92 @@
+CREATE DATABASE IF NOT EXISTS biblioteca_virtual CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE biblioteca_virtual;
+
+CREATE TABLE IF NOT EXISTS users (
+ id INT AUTO_INCREMENT PRIMARY KEY,
+ name VARCHAR(100) NOT NULL,
+ email VARCHAR(190) NOT NULL UNIQUE,
+ password_hash VARCHAR(255) NOT NULL,
+ city VARCHAR(100) DEFAULT '',
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS books (
+ id INT AUTO_INCREMENT PRIMARY KEY,
+ title VARCHAR(200) NOT NULL,
+ author VARCHAR(150) NOT NULL,
+ description TEXT NOT NULL,
+ category VARCHAR(80) NOT NULL,
+ quantity INT NOT NULL DEFAULT 1,
+ owner_id INT NOT NULL,
+ city VARCHAR(100) NOT NULL,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE,
+ INDEX(title), INDEX(category)
+);
+
+CREATE TABLE IF NOT EXISTS loans (
+ id INT AUTO_INCREMENT PRIMARY KEY,
+ book_id INT NOT NULL,
+ borrower_id INT NOT NULL,
+ owner_id INT NOT NULL,
+ borrowed_at DATE NOT NULL,
+ due_date DATE NOT NULL,
+ returned_at DATE DEFAULT NULL,
+ status ENUM('active','returned') NOT NULL DEFAULT 'active',
+ FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+ FOREIGN KEY (borrower_id) REFERENCES users(id) ON DELETE CASCADE,
+ FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE,
+ INDEX(status,due_date)
+);
+
+CREATE TABLE IF NOT EXISTS wishlist (
+ user_id INT NOT NULL,
+ book_id INT NOT NULL,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY(user_id, book_id),
+ FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+ FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS book_reviews (
+ id INT AUTO_INCREMENT PRIMARY KEY,
+ user_id INT NOT NULL,
+ book_id INT NOT NULL,
+ rating TINYINT NOT NULL,
+ review TEXT NOT NULL,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE KEY one_review_per_user_book(user_id,book_id),
+ FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+ FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS recommendations (
+ id INT AUTO_INCREMENT PRIMARY KEY,
+ user_id INT NOT NULL,
+ book_id INT NOT NULL,
+ message VARCHAR(600) NOT NULL,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE KEY one_recommendation_per_user_book(user_id,book_id),
+ FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+ FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+ id INT AUTO_INCREMENT PRIMARY KEY,
+ user_id INT NOT NULL,
+ message VARCHAR(1200) NOT NULL,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+ INDEX(created_at)
+);
+
+CREATE TABLE IF NOT EXISTS site_reviews (
+ id INT AUTO_INCREMENT PRIMARY KEY,
+ user_id INT NOT NULL,
+ rating TINYINT NOT NULL,
+ comment TEXT NOT NULL,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ UNIQUE KEY one_site_review_per_user(user_id),
+ FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+

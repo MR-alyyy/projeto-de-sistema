@@ -1,0 +1,35 @@
+BIBLIOTECA VIRTUAL — COMO INSTALAR NO XAMPP
+
+REQUISITOS
+- XAMPP com Apache, MySQL e PHP.
+- Navegador atualizado.
+
+INSTALAÇÃO
+1. Extraia a pasta BibliotecaVirtual.
+2. Copie a pasta para C:\xampp\htdocs\BibliotecaVirtual
+3. Abra o XAMPP Control Panel e inicie Apache e MySQL.
+4. Abra http://localhost/phpmyadmin
+5. Clique em Importar, escolha o arquivo database.sql desta pasta e execute.
+   (Alternativamente, abra database.sql na aba SQL do phpMyAdmin.)
+6. Confira usuário/senha do banco em config.php. No XAMPP padrão, root sem senha.
+7. Acesse http://localhost/BibliotecaVirtual/
+
+FUNÇÕES INCLUÍDAS
+- Cadastro e login de usuários com senha criptografada e sessão.
+- Explorar catálogo, pesquisar título/autor/descrição e filtrar categoria.
+- Cadastro de livro com título, autor, descrição, categoria, quantidade e cidade.
+- Lista de desejos com botão de coração.
+- Empréstimos com prazos de 7, 14 ou 30 dias, controle de cópias disponíveis, dias restantes e registro de devolução antecipada.
+- Clube de leitura com mural de mensagens compartilhado entre usuários.
+- Recomendações da comunidade.
+- Avaliações individuais dos livros (nota de 1 a 5 e comentário).
+- Avaliação geral do site e média das avaliações.
+- Resumo com quantidade de cópias cadastradas, empréstimos no mês e média do site.
+- Minha conta e saída segura da sessão.
+
+OBSERVAÇÕES IMPORTANTES
+- É um protótipo funcional para rodar localmente no XAMPP. Para usuários em computadores diferentes acessarem o mesmo catálogo/chat, o projeto precisa ser publicado em um servidor acessível.
+- O empréstimo é um registro de intenção: o site não faz logística física. O dono e quem pega o livro precisam combinar entrega e devolução.
+- A localização pede somente cidade, não endereço completo. Combine encontros em locais públicos e seguros.
+- Não há painel administrativo, redefinição de senha por e-mail nem notificações automáticas neste protótipo.
+- Para uso público real, configure HTTPS, backups, política de privacidade, moderação do chat e medidas extras de segurança.

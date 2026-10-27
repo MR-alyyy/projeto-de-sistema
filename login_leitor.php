@@ -35,7 +35,7 @@ if (isset($_POST['entrar'])) {
 
                 $stmt->close();
 
-                header("Location: tela_principal.html");
+                header("Location: tela_principal.php");
                 exit();
 
             } else {
